@@ -40,6 +40,10 @@ def calculate_filesize(file_path):
         return f.tell()
 
 
+def get_basename(file_path):
+    return os.path.basename(file_path)
+
+
 def compute_hash(file_path):
     hasher = sha256()
     with open(file_path, 'rb') as f:
@@ -58,7 +62,12 @@ class HotCompressSql:
         with connection:
             with connection.cursor() as cursor:
                 cursor.execute(statement, *args)
-        return cursor.fetchone()
+        res = cursor.fetchone()
+        if res is not None:
+            return res
+        else:
+            res = {'idx': 0}
+            return res
 
     @staticmethod
     def __db_fetch_all(statement: str, *args):
@@ -67,6 +76,14 @@ class HotCompressSql:
             with connection.cursor() as cursor:
                 cursor.execute(statement, *args)
         return cursor.fetchall()
+
+    @staticmethod
+    def __db_insert_one(statement: str, *args):
+        connection = pymysql.connect(**connection_string)
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(statement, *args)
+            connection.commit()
 
     def __init__(self):
         self.log = logging.getLogger('HotCompress.HotCompressSql.sql_functions')
@@ -113,18 +130,16 @@ class HotCompressSql:
                 else:
                     return res['idx']
 
-    def create_file(self, file_name):
-        print("Creating file...")
-        connection = pymysql.connect(**self.connection_string)
-        with connection:
-            with connection.cursor() as cursor:
-                sql = "INSERT INTO `data_meta` (`file_name`) VALUES (%s)"
-                cursor.execute(sql, file_name)
-            connection.commit()
+    def create_file_meta(self, file_name):
+        log.info("Create file metadata for {}".format(file_name))
+        base = get_basename(file_name)
+        ext = os.path.splitext(base)[1]
+        log.debug("BASE NAME: {}, EXTENSION: {}".format(base, ext))
+        self.__db_insert_one(ss.insert_meta, (base, ext))
 
     def get_hash_by_file_id(self, file_index):
-        sql = "SELECT `hash` FROM data_meta WHERE idx = %s"
-        return self.__db_fetch_one(sql, file_index)['hash']
+        sql = "SELECT `file_hash` FROM data_meta WHERE idx = %s"
+        return self.__db_fetch_one(sql, file_index)['file_hash']
 
     def get_blob_count(self, file_index: int) -> int:
         connection = pymysql.connect(**self.connection_string)
@@ -156,6 +171,7 @@ class HotCompressSql:
         with open(tmp_path, 'wb') as tmp_file:
             for i in range(row_count):
                 row = self.__db_fetch_one(ss.chunk_data, (file_index, i))
+                # noinspection PyTypeChecker
                 tmp_file.write(row['chunk_data'])
                 self.log.info('Writing temporary chunk {}/{}'.format(i + 1, row_count))
             tmp_file.close()
@@ -164,13 +180,14 @@ class HotCompressSql:
             self.log.info('Checking current file hash.')
             file_hash = compute_hash(self.unpack_file(tmp_path, file_name))
             self.log.info('Extracted hash: {}'.format(file_hash))
-            if db_hash is file_hash:
+            if db_hash == file_hash:
                 self.log.info('File hashes match!')
             else:
                 self.log.warning('File hashes do not match')
             
     def write_blobs(self, file_path, chunk_size, file_index):
-        tmp_path = file_path + '.tmp'
+        tmp_path = set_temp_path(file_path) + ".gz.tmp"
+        tmp_path = os.path.basename(tmp_path)
         with open(file_path, 'rb') as f_in:
             with gzip.open(tmp_path, 'wb', compresslevel=0) as f_out:
                 shutil.copyfileobj(f_in, f_out)
@@ -181,8 +198,6 @@ class HotCompressSql:
             self.check_for_file(sha_sum)
             size = calculate_filesize(tmp_path)
             chunks = size // chunk_size + 1
-
-            print("Chunk count: ", chunks)
 
             i = 0
             while i < chunks:
@@ -196,6 +211,9 @@ class HotCompressSql:
                             cursor.execute(sql, (file_index, data, i))
                             connection.commit()
                     i += 1
+                except pymysql.err.ProgrammingError as e:
+                    log.debug("PYMYSQL ERROR")
+                    exit(129)
                 finally:
                     pass
             self.update_fileinfo(file_index, size, full_size, sha_sum, chunks)
@@ -210,4 +228,29 @@ class HotCompressSql:
         return True
 
     def get_last_file_id(self):
+        return self.__db_fetch_one(ss.next_file_id)['NEXT_ID']
+
+    def get_latest_file_id(self):
         return self.__db_fetch_one(ss.last_file_id)['idx']
+
+    def test_file_exists(self, file_path) -> int:
+        """
+        Check for the existence of a file hash in the database
+
+                Parameters:
+                        file_path (str): A filesystem path.
+
+                Returns:
+                        0 if hash not found, or the file index from the database.
+        """
+        log.info("Checking for file {}".format(file_path))
+        file_hash = compute_hash(file_path)
+        res = self.__db_fetch_one(ss.check_exists, file_hash)
+        log.debug("RESULT SET: {}".format(res))
+        if res['idx'] == 0:
+            log.info("File {} not found in DB".format(file_path))
+            return 0
+        else:
+            log.warning("File {} already exists in database, Id: {}".format(file_path, res['idx']))
+            return res['idx']
+

@@ -1,0 +1,14 @@
+compression:
+  chunk_size: 8388608
+  level: 0
+
+db:
+  host: "db.example.com"
+  name: "hot_compress"
+  port: 3306
+  user: "hot_compress"
+  pass: "str0ngP455w0rd!"
+
+paths:
+  recurse: false
+  storage_path: 'C:\Users\username\temp_files'
