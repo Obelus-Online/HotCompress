@@ -1,6 +1,7 @@
 compression:
   chunk_size: 8388608
   level: 0
+  large_files: false
 
 db:
   host: "db.example.com"
