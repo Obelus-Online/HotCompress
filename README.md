@@ -1,7 +1,11 @@
-<div style="text-align: center;">
-![logo of towel with steam being emitted](./hotcompress.svg)
-</div>
-
+<img 
+    style="display: block; 
+           margin-left: auto;
+           margin-right: auto;
+           width: 30%;"
+    src="https://git.obelus.online/Obelus_Admin/HotCompress/raw/commit/74a05e8868a26fbf88923e0d8d48656ef18edd4d/hotcompress.svg" 
+    alt="Our logo">
+</img>
 ## What is This?
 Hot Compress is an application which allows the storage of files in a database. Although this is typically a bad idea, it may work as a local download catalogue to prevent duplication of files acquired over many years.
 
