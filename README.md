@@ -9,6 +9,11 @@
 ## What is This?
 Hot Compress is an application which allows the storage of files in a database. Although this is typically a bad idea, it may work as a local download catalogue to prevent duplication of files acquired over many years.
 
+## Configuration
+Rename the file config.yaml.example to config.yaml, set values inside the file according to your environment and needs.
+
+The file sql/hot_compress.sql can be used to template out tables and a database.
+
 ## Usage
 Hot Compress is currently a command line utility, usage is as follows.
 

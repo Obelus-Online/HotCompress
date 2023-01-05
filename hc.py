@@ -4,7 +4,6 @@ import sys
 import sql_functions
 import re
 import logging
-import os
 import hc_configure
 import hc_filehandling
 
