@@ -29,14 +29,35 @@ def add_file_to_db(file_path):
         pass
 
 
+def print_help():
+    print("""
+    Usage: hc.py [ FILE_1 FILE_2...] | DIRECTORY | ID_NUMBER
+        
+    Commands:
+        print:          Display a list of items in the database.
+        list:           Same as print
+        delete ID_NUM:  Delete the file with the specified Id from the database. 
+    """)
+
+
 if __name__ == "__main__":
     log.info('Application start.')
     conf = hc_configure.HotCompressConfiguration().get_compression_config()
 
     db = sql_functions.HotCompressSql()
+
+    if 'del' or 'DEL' or 'DELETE' or 'delete' in sys.argv:
+        if re.search("^[0-9]+", sys.argv[2]):
+            print('delete {}'.format(sys.argv[2]))
+            exit(0)
+        else:
+            print_help()
+            exit(0)
+
     for i, arg in enumerate(sys.argv[1:]):
 
         x = re.search("^[0-9]", arg)
+
         if x is not None:
             log.info('Searching for file with index {}'.format(arg))
             if db.check_for_file_by_id(arg):
