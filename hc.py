@@ -1,7 +1,7 @@
 #!/usr/bin/python3 test.py
 
 import sys
-import sql_functions
+import hc_sql
 import re
 import logging
 import hc_configure
@@ -43,16 +43,16 @@ def print_help():
 if __name__ == "__main__":
     log.info('Application start.')
     conf = hc_configure.HotCompressConfiguration().get_compression_config()
-
-    db = sql_functions.HotCompressSql()
-
+    db = hc_sql.HotCompressSql()
     if 'del' or 'DEL' or 'DELETE' or 'delete' in sys.argv:
         if re.search("^[0-9]+", sys.argv[2]):
-            print('delete {}'.format(sys.argv[2]))
+            db.delete_file_by_id(sys.argv[2])
             exit(0)
         else:
             print_help()
             exit(0)
+
+
 
     for i, arg in enumerate(sys.argv[1:]):
 
