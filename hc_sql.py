@@ -7,6 +7,8 @@ from tempfile import gettempdir as tmp
 from hashlib import sha256
 from tabulate import tabulate as tb
 import logging
+
+import sql_scripts
 import sql_scripts as ss
 import hc_configure
 
@@ -85,6 +87,15 @@ class HotCompressSql:
                 cursor.execute(statement, *args)
             connection.commit()
 
+    @staticmethod
+    def __db_delete_one(file_index):
+        connection = pymysql.connect(**connection_string)
+        args = file_index
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql_scripts.delete_one_by_id, *args)
+            connection.commit()
+
     def __init__(self):
         self.log = logging.getLogger('HotCompress.HotCompressSql.sql_functions')
         self.log.info('Initialize database connection.')
@@ -129,6 +140,15 @@ class HotCompressSql:
                     return 0
                 else:
                     return res['idx']
+
+    def delete_file_by_id(self, file_index):
+        if self.check_for_file_by_id(file_index):
+            self.log.info("Deleting file with id {}".format(file_index))
+            self.__db_delete_one(file_index)
+            return True
+        else:
+            self.log.info("Could not find file with ID: {}".format(file_index))
+            return False
 
     def create_file_meta(self, file_name):
         log.info("Create file metadata for {}".format(file_name))

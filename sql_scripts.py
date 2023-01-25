@@ -52,6 +52,13 @@ check_exists = """
             file_hash = %s;
     """
 
+delete_one_by_id = """
+    DELETE FROM 
+        data_meta
+    WHERE
+        idx=%s;
+    """
+
 insert_meta = """
         INSERT INTO 
             `data_meta` (`file_name`, `extension`)
